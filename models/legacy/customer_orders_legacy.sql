@@ -24,6 +24,7 @@ customer_orders
     group by 1)
 
 select
+{#
     p.*,
     ROW_NUMBER() OVER (ORDER BY p.order_id) as transaction_seq,
     ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY p.order_id) as customer_sales_seq,
@@ -45,3 +46,57 @@ select
         order by p.order_id
     ) x on x.order_id = p.order_id
     ORDER BY order_id
+    #}
+
+    p.order_id,
+    p.customer_id,
+
+    -- Order information
+    p.order_placed_at as order_date,
+    p.order_status,
+    p.total_amount_paid as order_value_dollars,
+    p.payment_finalized_date,
+
+    -- Customer information
+    p.customer_first_name as givenname,
+    p.customer_last_name as surname,
+
+    -- Customer metrics
+    x.clv_bad as total_lifetime_value,
+    c.first_order_date as first_order_date,
+    c.number_of_orders as order_count,
+
+    -- Legacy-only fields
+    row_number() over (
+        order by p.order_id
+    ) as transaction_seq,
+
+    row_number() over (
+        partition by p.customer_id
+        order by p.order_id
+    ) as customer_sales_seq,
+
+    case
+        when c.first_order_date = p.order_placed_at
+            then 'new'
+        else 'return'
+    end as nvsr
+
+from paid_orders p
+
+left join customer_orders as c
+    using (customer_id)
+
+left outer join (
+    select
+        p.order_id,
+        sum(t2.total_amount_paid) as clv_bad
+    from paid_orders p
+    left join paid_orders t2
+        on p.customer_id = t2.customer_id
+        and p.order_id >= t2.order_id
+    group by 1
+) x
+    on x.order_id = p.order_id
+
+order by order_id
