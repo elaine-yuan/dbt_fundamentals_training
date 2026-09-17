@@ -40,4 +40,5 @@ models:
     staging:
       +materialized: view
     marts:
+      # materialize all models in models/marts as tables
       +materialized: table
