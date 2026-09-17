@@ -16,11 +16,12 @@ completed_payments as (
 
   select 
     order_id,
+    payment_status,
     max(created_at) as payment_finalized_date,
     sum(payment_amount) as order_value_dollars
   from payments
   where payment_status <> 'fail'
-  group by 1
+  group by 1,2
 
 ),
 
@@ -32,6 +33,7 @@ paid_orders as (
     orders.order_date,
     orders.order_status,
     orders.valid_order_date,
+    completed_payments.payment_status,
     completed_payments.order_value_dollars,
     completed_payments.payment_finalized_date
   from orders
